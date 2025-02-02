@@ -1,63 +1,89 @@
-<script>
-    let map;
-
-    function initMap() {
-        map = new google.maps.Map(document.getElementById("map"), {
-            center: { lat: 20.5937, lng: 78.9629 }, // Centered on India
-            zoom: 5,
-        });
-
-        fetchGoogleSheetData(); // Fetch & display locations
-    }
-
-    function fetchGoogleSheetData() {
-        const sheetUrl = "https://docs.google.com/spreadsheets/d/1VKsOnCWegBnn3XrQPhruf3ynUq78h_IJBXyDN56ZVGU/gviz/tq?tqx=out:csv&gid=1129895608";
-        
-        fetch(sheetUrl)
-            .then(response => response.text()) 
-            .then(data => {
-                const rows = data.split("\n").map(row => row.split(","));  
-                rows.shift();  // Remove header row
-
-                rows.forEach(row => {
-                    let zoneId = row[0];         // Zone ID (not used)
-                    let name = row[1];           // Location Name
-                    let country = row[2];        // Country
-                    let lat = parseFloat(row[3]); // Latitude
-                    let lng = parseFloat(row[4]); // Longitude
-                    let dangerLevel = row[5] ? row[5].trim() : ""; // Danger Level
-                    let reason = row[6] ? row[6].trim() : ""; // Reason for Danger
-
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        let marker = new google.maps.Marker({
-                            position: { lat: lat, lng: lng },
-                            map: map,
-                            title: `${name}, ${country} - ${dangerLevel}`,
-                            icon: getMarkerColor(dangerLevel) 
-                        });
-
-                        // Show info window on click
-                        let infoWindow = new google.maps.InfoWindow({
-                            content: `<strong>${name}, ${country}</strong><br>
-                                      <b>Danger Level:</b> ${dangerLevel}<br>
-                                      <b>Reason:</b> ${reason}`
-                        });
-
-                        marker.addListener("click", () => {
-                            infoWindow.open(map, marker);
-                        });
-                    }
-                });
-            })
-            .catch(error => console.error("Error fetching data:", error));
-    }
-
-    function getMarkerColor(dangerLevel) {
-        switch (dangerLevel.toLowerCase()) {
-            case "extreme": return "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
-            case "high": return "http://maps.google.com/mapfiles/ms/icons/orange-dot.png";
-            case "medium": return "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
-            default: return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unsafe Locations Map</title>
+    <style>
+        #map {
+            height: 100vh; /* Full-screen height */
+            width: 100%;
         }
-    }
-</script>
+    </style>
+</head>
+<body>
+
+    <h2>Unsafe Locations Map</h2>
+    <div id="map"></div>
+
+    <script>
+        let map;
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 20.5937, lng: 78.9629 }, // Centered on India
+                zoom: 5,
+            });
+
+            fetchGoogleSheetData(); // Fetch & display locations
+        }
+
+        function fetchGoogleSheetData() {
+            const sheetUrl = "https://docs.google.com/spreadsheets/d/1VKsOnCWegBnn3XrQPhruf3ynUq78h_IJBXyDN56ZVGU/gviz/tq?tqx=out:csv&gid=1129895608";
+            
+            fetch(sheetUrl)
+                .then(response => response.text()) 
+                .then(data => {
+                    const rows = data.split("\n").map(row => row.split(","));  
+                    rows.shift();  // Remove header row
+
+                    rows.forEach(row => {
+                        let zoneId = row[0];         // Zone ID (not used)
+                        let name = row[1];           // Location Name
+                        let country = row[2];        // Country
+                        let lat = parseFloat(row[3]); // Latitude
+                        let lng = parseFloat(row[4]); // Longitude
+                        let dangerLevel = row[5] ? row[5].trim() : ""; // Danger Level
+                        let reason = row[6] ? row[6].trim() : ""; // Reason for Danger
+
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            let marker = new google.maps.Marker({
+                                position: { lat: lat, lng: lng },
+                                map: map,
+                                title: `${name}, ${country} - ${dangerLevel}`,
+                                icon: getMarkerColor(dangerLevel) 
+                            });
+
+                            // Show info window on click
+                            let infoWindow = new google.maps.InfoWindow({
+                                content: `<strong>${name}, ${country}</strong><br>
+                                          <b>Danger Level:</b> ${dangerLevel}<br>
+                                          <b>Reason:</b> ${reason}`
+                            });
+
+                            marker.addListener("click", () => {
+                                infoWindow.open(map, marker);
+                            });
+                        }
+                    });
+                })
+                .catch(error => console.error("Error fetching data:", error));
+        }
+
+        function getMarkerColor(dangerLevel) {
+            switch (dangerLevel.toLowerCase()) {
+                case "extreme": return "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
+                case "high": return "http://maps.google.com/mapfiles/ms/icons/orange-dot.png";
+                case "medium": return "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
+                default: return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+            }
+        }
+    </script>
+
+    <!-- Google Maps API (Replace YOUR_API_KEY with your actual Google Maps API Key) -->
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&callback=initMap">
+    </script>
+
+</body>
+</html>
