@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Heatmap Example</title>
+    <title>Unsafe Locations Map</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization"></script>
     <script>
         function initMap() {
@@ -11,18 +11,48 @@
                 mapTypeId: 'roadmap'
             });
 
-            var heatmapData = [
-                new google.maps.LatLng(28.6139, 77.2090),  // Delhi
-                new google.maps.LatLng(19.0760, 72.8777),  // Mumbai
-                new google.maps.LatLng(33.7782, 76.5762)   // Srinagar
-            ];
+            // Fetch data from Google Sheets
+            var sheetUrl = 'https://spreadsheets.google.com/feeds/list/1VKsOnCWegBnn3XrQPhruf3ynUq78h_IJBXyDN56ZVGU/od6/public/values?alt=json';
 
-            var heatmap = new google.maps.visualization.HeatmapLayer({
-                data: heatmapData,
-                radius: 30
-            });
+            fetch(sheetUrl)
+                .then(response => response.json())
+                .then(data => {
+                    var locations = data.feed.entry;
 
-            heatmap.setMap(map);
+                    // Loop through the locations and create markers for each one
+                    locations.forEach(function(location) {
+                        var lat = parseFloat(location.Latitude.$t);
+                        var lng = parseFloat(location.Longitude.$t);
+                        var name = location.Location_Name.$t;  // Change this to the correct column name from your sheet
+
+                        var marker = new google.maps.Marker({
+                            position: new google.maps.LatLng(lat, lng),
+                            map: map,
+                            title: name
+                        });
+                    });
+                })
+                .catch(error => {
+                    console.error("Error fetching data from Google Sheets:", error);
+                });
+
+            // Optionally, you can add the user's location as well
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    var userLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                    var userMarker = new google.maps.Marker({
+                        position: userLocation,
+                        map: map,
+                        title: "You are here!"
+                    });
+                    map.setCenter(userLocation); // Center map on user's location
+                    map.setZoom(10); // Zoom in closer
+                }, function() {
+                    alert("Geolocation failed. Please allow location access.");
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
         }
     </script>
 </head>
