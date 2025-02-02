@@ -29,7 +29,7 @@
         }
 
         function fetchGoogleSheetData() {
-            const sheetUrl = "https://docs.google.com/spreadsheets/d/1VKsOnCWegBnn3XrQPhruf3ynUq78h_IJBXyDN56ZVGU/gviz/tq?tqx=out:csv&gid=1129895608";
+            const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv";
             
             fetch(sheetUrl)
                 .then(response => response.text()) 
@@ -38,7 +38,6 @@
                     rows.shift();  // Remove header row
 
                     rows.forEach(row => {
-                        let zoneId = row[0];         // Zone ID (not used)
                         let name = row[1];           // Location Name
                         let country = row[2];        // Country
                         let lat = parseFloat(row[3]); // Latitude
@@ -78,11 +77,20 @@
                 default: return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
             }
         }
-    </script>
 
-    <!-- Google Maps API (Replace YOUR_API_KEY with your actual Google Maps API Key) -->
-    <script async defer 
-        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&callback=initMap">
+        function loadGoogleMaps() {
+            if (!window.google) {
+                const script = document.createElement("script");
+                script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE";
+                script.async = true;
+                script.defer = true;
+                script.onload = initMap; // Load the map only after script loads
+                document.head.appendChild(script);
+            } else {
+                initMap(); // If already loaded, just initialize the map
+            }
+        }
+        loadGoogleMaps();
     </script>
 
 </body>
