@@ -5,15 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unsafe Locations Heatmap</title>
     <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
         #map {
-            height: 100vh; /* Full-screen height */
+            height: 100vh;
             width: 100%;
+        }
+        #info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 14px;
+            max-width: 200px;
+        }
+        #toggle-button {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px 15px;
+            background: #ff0000;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        #toggle-button:hover {
+            background: #cc0000;
         }
     </style>
 </head>
 <body>
 
-    <h2>Unsafe Locations Heatmap</h2>
+    <div id="info-panel">
+        <h3>Danger Level</h3>
+        <p><span style="color: red;">⬤ Extreme</span></p>
+        <p><span style="color: orange;">⬤ High</span></p>
+        <p><span style="color: yellow;">⬤ Medium</span></p>
+        <p><span style="color: green;">⬤ Low</span></p>
+    </div>
+
+    <button id="toggle-button" onclick="toggleHeatmap()">Toggle Heatmap</button>
+
     <div id="map"></div>
 
     <script>
@@ -21,11 +60,11 @@
 
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
-                center: { lat: 20.5937, lng: 78.9629 }, // Centered on India
+                center: { lat: 20.5937, lng: 78.9629 }, // India
                 zoom: 5,
             });
 
-            fetchGoogleSheetData(); // Fetch data & create heatmap
+            fetchGoogleSheetData();
         }
 
         function fetchGoogleSheetData() {
@@ -35,12 +74,12 @@
                 .then(response => response.text()) 
                 .then(data => {
                     const rows = data.split("\n").map(row => row.split(","));  
-                    rows.shift();  // Remove header row
+                    rows.shift(); 
 
                     heatmapData = rows.map(row => {
-                        let lat = parseFloat(row[3]); // Latitude
-                        let lng = parseFloat(row[4]); // Longitude
-                        let dangerLevel = row[5] ? row[5].trim().toLowerCase() : ""; // Danger Level
+                        let lat = parseFloat(row[3]);
+                        let lng = parseFloat(row[4]);
+                        let dangerLevel = row[5] ? row[5].trim().toLowerCase() : ""; 
 
                         let intensity = getHeatmapIntensity(dangerLevel);
                         return isNaN(lat) || isNaN(lng) ? null : { location: new google.maps.LatLng(lat, lng), weight: intensity };
@@ -53,27 +92,31 @@
 
         function getHeatmapIntensity(dangerLevel) {
             switch (dangerLevel) {
-                case "extreme": return 5; // Strongest heat
+                case "extreme": return 5;
                 case "high": return 3;
                 case "medium": return 1;
-                default: return 0.5; // Least impact
+                default: return 0.5;
             }
         }
 
         function createHeatmap() {
             heatmap = new google.maps.visualization.HeatmapLayer({
                 data: heatmapData,
-                radius: 30, // Adjust for visibility
+                radius: 30,
                 gradient: [
-                    "rgba(0, 255, 0, 0)",  // Green (low danger)
-                    "rgba(255, 255, 0, 1)", // Yellow (medium)
-                    "rgba(255, 165, 0, 1)", // Orange (high)
-                    "rgba(255, 0, 0, 1)"   // Red (extreme danger)
+                    "rgba(0, 255, 0, 0)",
+                    "rgba(255, 255, 0, 1)",
+                    "rgba(255, 165, 0, 1)",
+                    "rgba(255, 0, 0, 1)"
                 ],
                 dissipating: true
             });
 
             heatmap.setMap(map);
+        }
+
+        function toggleHeatmap() {
+            heatmap.setMap(heatmap.getMap() ? null : map);
         }
 
         function loadGoogleMaps() {
@@ -82,7 +125,7 @@
                 script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization";
                 script.async = true;
                 script.defer = true;
-                script.onload = initMap; // Load map after script loads
+                script.onload = initMap;
                 document.head.appendChild(script);
             } else {
                 initMap();
