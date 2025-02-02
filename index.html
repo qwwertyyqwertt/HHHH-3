@@ -38,9 +38,9 @@
                     rows.shift();  // Remove header row
 
                     rows.forEach(row => {
-                        let name = row[0];    
-                        let lat = parseFloat(row[1]); 
-                        let lng = parseFloat(row[2]); 
+                        let name = row[2];    
+                        let lat = parseFloat(row[4]); 
+                        let lng = parseFloat(row[5]); 
                         let dangerLevel = row[3] ? row[3].trim() : "";
 
                         if (!isNaN(lat) && !isNaN(lng)) {
