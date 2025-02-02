@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsafe Locations Map</title>
+    <title>Unsafe Locations Heatmap</title>
     <style>
         #map {
             height: 100vh; /* Full-screen height */
@@ -13,11 +13,11 @@
 </head>
 <body>
 
-    <h2>Unsafe Locations Map</h2>
+    <h2>Unsafe Locations Heatmap</h2>
     <div id="map"></div>
 
     <script>
-        let map;
+        let map, heatmap, heatmapData = [];
 
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
@@ -25,7 +25,7 @@
                 zoom: 5,
             });
 
-            fetchGoogleSheetData(); // Fetch & display locations
+            fetchGoogleSheetData(); // Fetch data & create heatmap
         }
 
         function fetchGoogleSheetData() {
@@ -37,57 +37,55 @@
                     const rows = data.split("\n").map(row => row.split(","));  
                     rows.shift();  // Remove header row
 
-                    rows.forEach(row => {
-                        let name = row[1];           // Location Name
-                        let country = row[2];        // Country
+                    heatmapData = rows.map(row => {
                         let lat = parseFloat(row[3]); // Latitude
                         let lng = parseFloat(row[4]); // Longitude
-                        let dangerLevel = row[5] ? row[5].trim() : ""; // Danger Level
-                        let reason = row[6] ? row[6].trim() : ""; // Reason for Danger
+                        let dangerLevel = row[5] ? row[5].trim().toLowerCase() : ""; // Danger Level
 
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            let marker = new google.maps.Marker({
-                                position: { lat: lat, lng: lng },
-                                map: map,
-                                title: `${name}, ${country} - ${dangerLevel}`,
-                                icon: getMarkerColor(dangerLevel) 
-                            });
+                        let intensity = getHeatmapIntensity(dangerLevel);
+                        return isNaN(lat) || isNaN(lng) ? null : { location: new google.maps.LatLng(lat, lng), weight: intensity };
+                    }).filter(Boolean);
 
-                            // Show info window on click
-                            let infoWindow = new google.maps.InfoWindow({
-                                content: `<strong>${name}, ${country}</strong><br>
-                                          <b>Danger Level:</b> ${dangerLevel}<br>
-                                          <b>Reason:</b> ${reason}`
-                            });
-
-                            marker.addListener("click", () => {
-                                infoWindow.open(map, marker);
-                            });
-                        }
-                    });
+                    createHeatmap();
                 })
                 .catch(error => console.error("Error fetching data:", error));
         }
 
-        function getMarkerColor(dangerLevel) {
-            switch (dangerLevel.toLowerCase()) {
-                case "extreme": return "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
-                case "high": return "http://maps.google.com/mapfiles/ms/icons/orange-dot.png";
-                case "medium": return "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
-                default: return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
+        function getHeatmapIntensity(dangerLevel) {
+            switch (dangerLevel) {
+                case "extreme": return 5; // Strongest heat
+                case "high": return 3;
+                case "medium": return 1;
+                default: return 0.5; // Least impact
             }
+        }
+
+        function createHeatmap() {
+            heatmap = new google.maps.visualization.HeatmapLayer({
+                data: heatmapData,
+                radius: 30, // Adjust for visibility
+                gradient: [
+                    "rgba(0, 255, 0, 0)",  // Green (low danger)
+                    "rgba(255, 255, 0, 1)", // Yellow (medium)
+                    "rgba(255, 165, 0, 1)", // Orange (high)
+                    "rgba(255, 0, 0, 1)"   // Red (extreme danger)
+                ],
+                dissipating: true
+            });
+
+            heatmap.setMap(map);
         }
 
         function loadGoogleMaps() {
             if (!window.google) {
                 const script = document.createElement("script");
-                script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE";
+                script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization";
                 script.async = true;
                 script.defer = true;
-                script.onload = initMap; // Load the map only after script loads
+                script.onload = initMap; // Load map after script loads
                 document.head.appendChild(script);
             } else {
-                initMap(); // If already loaded, just initialize the map
+                initMap();
             }
         }
         loadGoogleMaps();
