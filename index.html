@@ -1,62 +1,76 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unsafe Locations Map</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization"></script>
+    <style>
+        #map {
+            height: 100vh; /* Full-screen height */
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Unsafe Locations Map</h2>
+    <div id="map"></div>
+
     <script>
+        let map;
+
         function initMap() {
-            var map = new google.maps.Map(document.getElementById('map'), {
+            map = new google.maps.Map(document.getElementById("map"), {
+                center: { lat: 20.5937, lng: 78.9629 }, // Centered on India
                 zoom: 5,
-                center: { lat: 23.2599, lng: 77.4126 }, // Center of India
-                mapTypeId: 'roadmap'
             });
 
-            // Fetch data from Google Sheets
-            var sheetUrl = 'https://spreadsheets.google.com/feeds/list/1VKsOnCWegBnn3XrQPhruf3ynUq78h_IJBXyDN56ZVGU/od6/public/values?alt=json';
+            fetchGoogleSheetData(); // Fetch & display locations
+        }
 
+        function fetchGoogleSheetData() {
+            const sheetUrl = "https://docs.google.com/spreadsheets/d/1VKsOnCWegBnn3XrQPhruf3ynUq78h_IJBXyDN56ZVGU/gviz/tq?tqx=out:csv&gid=1129895608";
+            
             fetch(sheetUrl)
-                .then(response => response.json())
+                .then(response => response.text()) 
                 .then(data => {
-                    var locations = data.feed.entry;
+                    const rows = data.split("\n").map(row => row.split(","));  
+                    rows.shift();  // Remove header row
 
-                    // Loop through the locations and create markers for each one
-                    locations.forEach(function(location) {
-                        var lat = parseFloat(location.Latitude.$t);
-                        var lng = parseFloat(location.Longitude.$t);
-                        var name = location.Location_Name.$t;  // Change this to the correct column name from your sheet
+                    rows.forEach(row => {
+                        let name = row[0];    
+                        let lat = parseFloat(row[1]); 
+                        let lng = parseFloat(row[2]); 
+                        let dangerLevel = row[3] ? row[3].trim() : "";
 
-                        var marker = new google.maps.Marker({
-                            position: new google.maps.LatLng(lat, lng),
-                            map: map,
-                            title: name
-                        });
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            new google.maps.Marker({
+                                position: { lat: lat, lng: lng },
+                                map: map,
+                                title: name,
+                                icon: getMarkerColor(dangerLevel) 
+                            });
+                        }
                     });
                 })
-                .catch(error => {
-                    console.error("Error fetching data from Google Sheets:", error);
-                });
+                .catch(error => console.error("Error fetching data:", error));
+        }
 
-            // Optionally, you can add the user's location as well
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(function(position) {
-                    var userLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-                    var userMarker = new google.maps.Marker({
-                        position: userLocation,
-                        map: map,
-                        title: "You are here!"
-                    });
-                    map.setCenter(userLocation); // Center map on user's location
-                    map.setZoom(10); // Zoom in closer
-                }, function() {
-                    alert("Geolocation failed. Please allow location access.");
-                });
-            } else {
-                alert("Geolocation is not supported by this browser.");
+        function getMarkerColor(dangerLevel) {
+            switch (dangerLevel.toLowerCase()) {
+                case "extreme": return "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
+                case "high": return "http://maps.google.com/mapfiles/ms/icons/orange-dot.png";
+                case "medium": return "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
+                default: return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
             }
         }
     </script>
-</head>
-<body onload="initMap()">
-    <div id="map" style="height: 100vh; width: 100%;"></div>
+
+    <!-- Google Maps API (Replace YOUR_API_KEY with your actual Google Maps API Key) -->
+    <script async defer 
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries&callback=initMap">
+    </script>
+
 </body>
 </html>
+
