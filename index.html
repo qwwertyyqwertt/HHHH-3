@@ -3,46 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsafe Locations Heatmap</title>
+    <title>Unsafe Locations Map</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization&callback=initMap" async defer></script>
     <style>
         #map {
             height: 100vh;
             width: 100%;
         }
-        #toggle {
+        .button-container {
             position: absolute;
             top: 10px;
             left: 10px;
-            background: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
             z-index: 1000;
+        }
+        button {
+            display: block;
+            margin-bottom: 5px;
+            padding: 10px;
+            font-size: 14px;
+            background-color: white;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <button id="toggle">Toggle Heatmap</button>
+    <div class="button-container">
+        <button id="myLocation">My Location</button>
+    </div>
 
     <script>
         let map;
         let heatmap;
         let heatmapData = [];
-        let markers = [];
-        let showHeatmap = true;
-        const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv";
+        let userMarker = null;
+        const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv";  // Replace with your Google Sheets CSV link
 
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
                 zoom: 5,
-                center: { lat: 20.5937, lng: 78.9629 }, // Centered on India
+                center: { lat: 20.5937, lng: 78.9629 }, // India center
             });
 
-            // 🔹 Load Google Sheets Data
+            // Load Google Sheets Data
             fetch(sheetURL)
                 .then(response => response.text())
                 .then(data => {
@@ -51,31 +57,16 @@
                         const cols = row.split(",");
                         if (cols.length < 5) return;
 
-                        const locationName = cols[1].trim();
                         const latitude = parseFloat(cols[3]);
                         const longitude = parseFloat(cols[4]);
-                        const dangerLevel = cols[5] ? cols[5].trim() : "Unknown";
 
-                        // ✅ Check if lat & lng are valid
                         if (!isNaN(latitude) && !isNaN(longitude)) {
                             const latLng = new google.maps.LatLng(latitude, longitude);
                             heatmapData.push(latLng);
-
-                            // Add Marker
-                            const marker = new google.maps.Marker({
-                                position: latLng,
-                                map: map,
-                                title: locationName,
-                                icon: {
-                                    url: getMarkerColor(dangerLevel),
-                                    scaledSize: new google.maps.Size(40, 40)
-                                }
-                            });
-                            markers.push(marker);
                         }
                     });
 
-                    // ✅ Heatmap Layer
+                    // Create Heatmap Layer
                     heatmap = new google.maps.visualization.HeatmapLayer({
                         data: heatmapData,
                         radius: 50,
@@ -84,45 +75,33 @@
                 })
                 .catch(error => console.error("Error fetching data:", error));
 
-            // 🔹 Get User Location
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    const userLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-                    new google.maps.Marker({
-                        position: userLocation,
-                        map: map,
-                        title: "Your Location",
-                        icon: {
-                            path: google.maps.SymbolPath.CIRCLE,
-                            scale: 10,
-                            fillColor: "#4285F4",
-                            fillOpacity: 1,
-                            strokeWeight: 2
-                        }
-                    });
-                    map.setCenter(userLocation);
-                });
-            } else {
-                alert("Geolocation is not supported by this browser.");
-            }
+            // Get User Location
+            document.getElementById("myLocation").addEventListener("click", function() {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(position => {
+                        const userLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                        
+                        if (userMarker) userMarker.setMap(null); // Remove old marker
+                        userMarker = new google.maps.Marker({
+                            position: userLocation,
+                            map: map,
+                            title: "Your Location",
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 10,
+                                fillColor: "#4285F4",
+                                fillOpacity: 1,
+                                strokeWeight: 2
+                            }
+                        });
 
-            // 🔹 Toggle Heatmap Button
-            document.getElementById("toggle").addEventListener("click", function() {
-                showHeatmap = !showHeatmap;
-                heatmap.setMap(showHeatmap ? map : null);
+                        map.setCenter(userLocation);
+                    });
+                } else {
+                    alert("Geolocation is not supported by this browser.");
+                }
             });
         }
-
-        // 🔹 Function to Assign Marker Colors Based on Danger Level
-        function getMarkerColor(dangerLevel) {
-            switch (dangerLevel.toLowerCase()) {
-                case "extreme danger": return "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
-                case "high danger": return "http://maps.google.com/mapfiles/ms/icons/orange-dot.png";
-                case "medium danger": return "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
-                default: return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
-            }
-        }
-
     </script>
 
 </body>
