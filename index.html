@@ -43,9 +43,10 @@
         const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv";  // Replace with your Google Sheets CSV link
 
         function initMap() {
+            // Initialize the map with no center, it will center on the user's location later
             map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 3,
-                center: { lat: 0, lng: 0 }, // India center
+                zoom: 3, // Default zoom level
+                center: { lat: 0, lng: 0 }, // Empty center, will be updated
             });
 
             // Load Google Sheets Data
@@ -75,13 +76,16 @@
                 })
                 .catch(error => console.error("Error fetching data:", error));
 
-            // Get User Location
+            // Get User Location and center the map
             document.getElementById("myLocation").addEventListener("click", function() {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(position => {
                         const userLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
                         
-                        if (userMarker) userMarker.setMap(null); // Remove old marker
+                        // Remove the old marker if it exists
+                        if (userMarker) userMarker.setMap(null);
+
+                        // Create a new marker at the user's location
                         userMarker = new google.maps.Marker({
                             position: userLocation,
                             map: map,
@@ -95,7 +99,9 @@
                             }
                         });
 
+                        // Recenter the map to the user's location and zoom in
                         map.setCenter(userLocation);
+                        map.setZoom(14);  // Zoom level can be adjusted as needed (default 14)
                     });
                 } else {
                     alert("Geolocation is not supported by this browser.");
