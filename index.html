@@ -3,33 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heatmap with My Location</title>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization&callback=initMap" async defer></script>
+    <title>Heatmap with User Location</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         #map {
             height: 100vh;
             width: 100%;
         }
-        .custom-button {
+        #controls {
             position: absolute;
             top: 10px;
             left: 10px;
-            background-color: white;
-            border: 2px solid black;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0,0,0,0.2);
+        }
+        button {
+            margin: 5px;
             padding: 10px;
             cursor: pointer;
-            z-index: 5;
         }
     </style>
 </head>
-    <meta http-equiv="Permissions-Policy" content="geolocation=(self)">
 <body>
+
+    <div id="controls">
+        <button onclick="getMyLocation()">📍 My Location</button>
+        <button onclick="toggleHeatmap()">🔥 Toggle Heatmap</button>
+    </div>
+
     <div id="map"></div>
-    <button class="custom-button" onclick="getMyLocation()">📍 My Location</button>
 
     <script>
-        let map, heatmap;
-        let locations = [];
+        let map;
+        let heatmap;
+        let userMarker;
+        let heatmapData = [];
 
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
@@ -38,53 +48,68 @@
                 mapTypeId: "roadmap"
             });
 
-            // Fetch data from Google Sheets
-            fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv")
-                .then(response => response.text())
-                .then(csvText => {
-                    let rows = csvText.split("\n").slice(1); // Remove header
-                    rows.forEach(row => {
-                        let cols = row.split(",");
-                        let lat = parseFloat(cols[3]); // Latitude
-                        let lng = parseFloat(cols[4]); // Longitude
+            loadHeatmapData();
+        }
 
-                        if (!isNaN(lat) && !isNaN(lng)) {
-                            locations.push(new google.maps.LatLng(lat, lng));
-                        }
-                    });
+        function loadHeatmapData() {
+            $.get("https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv", function (data) {
+                let rows = data.split("\n");
+                rows.shift(); // Remove headers
 
-                    // Create Heatmap
-                    heatmap = new google.maps.visualization.HeatmapLayer({
-                        data: locations,
-                        radius: 25
-                    });
-                    heatmap.setMap(map);
-                })
-                .catch(error => console.error("Error fetching Google Sheets data:", error));
+                rows.forEach(row => {
+                    let columns = row.split(",");
+                    let lat = parseFloat(columns[3]);
+                    let lng = parseFloat(columns[4]);
+
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        heatmapData.push(new google.maps.LatLng(lat, lng));
+                    }
+                });
+
+                heatmap = new google.maps.visualization.HeatmapLayer({
+                    data: heatmapData,
+                    map: map,
+                    radius: 30
+                });
+            });
         }
 
         function getMyLocation() {
             if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    let userLocation = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    };
-                    map.setCenter(userLocation);
-                    map.setZoom(15);
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        let userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
 
-                    new google.maps.Marker({
-                        position: userLocation,
-                        map: map,
-                        title: "You are here"
-                    });
-                }, () => {
-                    alert("Location access denied or unavailable.");
-                });
+                        if (userMarker) userMarker.setMap(null);
+                        userMarker = new google.maps.Marker({
+                            position: userLocation,
+                            map: map,
+                            title: "You are here",
+                            icon: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png"
+                        });
+
+                        map.setCenter(userLocation);
+                        map.setZoom(15);
+                    },
+                    (error) => {
+                        alert("Error: " + (error.message || "Location access denied."));
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
             } else {
-                alert("Geolocation is not supported by this browser.");
+                alert("Geolocation is not supported by your browser.");
             }
         }
+
+        function toggleHeatmap() {
+            heatmap.setMap(heatmap.getMap() ? null : map);
+        }
     </script>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization&callback=initMap" async defer></script>
+
 </body>
 </html>
