@@ -3,112 +3,87 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsafe Locations Map</title>
+    <title>Heatmap with My Location</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization&callback=initMap" async defer></script>
     <style>
         #map {
             height: 100vh;
             width: 100%;
         }
-        .button-container {
+        .custom-button {
             position: absolute;
             top: 10px;
             left: 10px;
-            z-index: 1000;
-        }
-        button {
-            display: block;
-            margin-bottom: 5px;
-            padding: 10px;
-            font-size: 14px;
             background-color: white;
-            border: 1px solid #ccc;
+            border: 2px solid black;
+            padding: 10px;
             cursor: pointer;
-            border-radius: 5px;
+            z-index: 5;
         }
     </style>
 </head>
 <body>
-
     <div id="map"></div>
-    <div class="button-container">
-        <button id="myLocation">My Location</button>
-    </div>
+    <button class="custom-button" onclick="getMyLocation()">📍 My Location</button>
 
     <script>
-        let map;
-        let heatmap;
-        let heatmapData = [];
-        let userMarker = null;
-        const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv";  // Replace with your Google Sheets CSV link
+        let map, heatmap;
+        let locations = [];
 
         function initMap() {
-            // Initialize the map with no center, it will center on the user's location later
             map = new google.maps.Map(document.getElementById("map"), {
-                zoom: 3, // Default zoom level
-                center: { lat: 0, lng: 0 }, // Empty center, will be updated
+                zoom: 5,
+                center: { lat: 20.5937, lng: 78.9629 }, // Default center (India)
+                mapTypeId: "roadmap"
             });
 
-            // Load Google Sheets Data
-            fetch(sheetURL)
+            // Fetch data from Google Sheets
+            fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv")
                 .then(response => response.text())
-                .then(data => {
-                    const rows = data.split("\n").slice(1);
+                .then(csvText => {
+                    let rows = csvText.split("\n").slice(1); // Remove header
                     rows.forEach(row => {
-                        const cols = row.split(",");
-                        if (cols.length < 5) return;
+                        let cols = row.split(",");
+                        let lat = parseFloat(cols[3]); // Latitude
+                        let lng = parseFloat(cols[4]); // Longitude
 
-                        const latitude = parseFloat(cols[3]);
-                        const longitude = parseFloat(cols[4]);
-
-                        if (!isNaN(latitude) && !isNaN(longitude)) {
-                            const latLng = new google.maps.LatLng(latitude, longitude);
-                            heatmapData.push(latLng);
+                        if (!isNaN(lat) && !isNaN(lng)) {
+                            locations.push(new google.maps.LatLng(lat, lng));
                         }
                     });
 
-                    // Create Heatmap Layer
+                    // Create Heatmap
                     heatmap = new google.maps.visualization.HeatmapLayer({
-                        data: heatmapData,
-                        radius: 50,
-                        map: map
+                        data: locations,
+                        radius: 25
                     });
+                    heatmap.setMap(map);
                 })
-                .catch(error => console.error("Error fetching data:", error));
+                .catch(error => console.error("Error fetching Google Sheets data:", error));
+        }
 
-            // Get User Location and center the map
-            document.getElementById("myLocation").addEventListener("click", function() {
-                if (navigator.geolocation) {
-                    navigator.geolocation.getCurrentPosition(position => {
-                        const userLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
-                        
-                        // Remove the old marker if it exists
-                        if (userMarker) userMarker.setMap(null);
+        function getMyLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    let userLocation = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    };
+                    map.setCenter(userLocation);
+                    map.setZoom(15);
 
-                        // Create a new marker at the user's location
-                        userMarker = new google.maps.Marker({
-                            position: userLocation,
-                            map: map,
-                            title: "Your Location",
-                            icon: {
-                                path: google.maps.SymbolPath.CIRCLE,
-                                scale: 10,
-                                fillColor: "#4285F4",
-                                fillOpacity: 1,
-                                strokeWeight: 2
-                            }
-                        });
-
-                        // Recenter the map to the user's location and zoom in
-                        map.setCenter(userLocation);
-                        map.setZoom(14);  // Zoom level can be adjusted as needed (default 14)
+                    new google.maps.Marker({
+                        position: userLocation,
+                        map: map,
+                        title: "You are here"
                     });
-                } else {
-                    alert("Geolocation is not supported by this browser.");
-                }
-            });
+                }, () => {
+                    alert("Location access denied or unavailable.");
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
         }
     </script>
-
 </body>
 </html>
