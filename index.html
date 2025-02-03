@@ -3,32 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unsafe Locations Map</title>
+    <title>Unsafe Locations Heatmap</title>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization&callback=initMap" async defer></script>
     <style>
         #map {
             height: 100vh;
             width: 100%;
-        }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            z-index: 9999;
-        }
-        .control-button {
-            padding: 10px 15px;
-            background: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 5px;
-        }
-        .control-button:hover {
-            background: #0056b3;
         }
     </style>
 </head>
@@ -36,19 +16,12 @@
 
     <div id="map"></div>
 
-    <div id="controls">
-        <button id="toggle-button" class="control-button" onclick="toggleHeatmap()">🔄 Toggle Heatmap</button>
-        <button id="location-button" class="control-button" onclick="getUserLocation()">📍 My Location</button>
-    </div>
-
     <script>
         let map;
         let heatmap;
-        let userMarker;
-        let markers = [];
         let heatmapData = [];
-        let isHeatmapVisible = true;
         const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv";
+        let locations = [];
 
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
@@ -67,27 +40,11 @@
                         const locationName = cols[1].trim();
                         const latitude = parseFloat(cols[3]);
                         const longitude = parseFloat(cols[4]);
-                        const dangerLevel = cols[5].trim();
+                        const reason = cols[6] ? cols[6].trim() : "No reason provided";
 
-                        const color = getMarkerColor(dangerLevel);
-
-                        // Add Markers
-                        const marker = new google.maps.Marker({
-                            position: { lat: latitude, lng: longitude },
-                            map: map,
-                            title: locationName,
-                            icon: {
-                                path: google.maps.SymbolPath.CIRCLE,
-                                scale: 8,
-                                fillColor: color,
-                                fillOpacity: 1,
-                                strokeWeight: 2,
-                            },
-                        });
-                        markers.push(marker);
-
-                        // Add to Heatmap Data
-                        heatmapData.push(new google.maps.LatLng(latitude, longitude));
+                        const latLng = new google.maps.LatLng(latitude, longitude);
+                        heatmapData.push(latLng);
+                        locations.push({ latLng, reason });
                     });
 
                     heatmap = new google.maps.visualization.HeatmapLayer({
@@ -97,57 +54,31 @@
                         map: map
                     });
 
+                    google.maps.event.addListener(map, "click", function(event) {
+                        showReason(event.latLng);
+                    });
                 })
                 .catch(error => console.error("Error fetching data:", error));
         }
 
-        function getMarkerColor(level) {
-            if (level.includes("Extreme")) return "red";
-            if (level.includes("High")) return "orange";
-            if (level.includes("Medium")) return "yellow";
-            return "gray";
-        }
+        function showReason(clickedLocation) {
+            let minDistance = Infinity;
+            let nearestLocation = null;
 
-        function toggleHeatmap() {
-            isHeatmapVisible = !isHeatmapVisible;
-            heatmap.setMap(isHeatmapVisible ? map : null);
-        }
+            locations.forEach(loc => {
+                const distance = google.maps.geometry.spherical.computeDistanceBetween(clickedLocation, loc.latLng);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestLocation = loc;
+                }
+            });
 
-        function getUserLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    position => {
-                        const userLatLng = {
-                            lat: position.coords.latitude,
-                            lng: position.coords.longitude
-                        };
-
-                        if (!userMarker) {
-                            userMarker = new google.maps.Marker({
-                                position: userLatLng,
-                                map: map,
-                                title: "Your Location",
-                                icon: {
-                                    path: google.maps.SymbolPath.CIRCLE,
-                                    scale: 8,
-                                    fillColor: "blue",
-                                    fillOpacity: 1,
-                                    strokeWeight: 2
-                                }
-                            });
-                        } else {
-                            userMarker.setPosition(userLatLng);
-                        }
-
-                        map.setCenter(userLatLng);
-                        map.setZoom(12);
-                    },
-                    error => {
-                        alert("Error getting location: " + error.message);
-                    }
-                );
-            } else {
-                alert("Geolocation is not supported by your browser.");
+            if (nearestLocation) {
+                const infoWindow = new google.maps.InfoWindow({
+                    content: `<strong>Reason:</strong> ${nearestLocation.reason}`,
+                    position: nearestLocation.latLng
+                });
+                infoWindow.open(map);
             }
         }
     </script>
