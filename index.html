@@ -71,6 +71,7 @@
 
                         const color = getMarkerColor(dangerLevel);
 
+                        // Add Markers
                         const marker = new google.maps.Marker({
                             position: { lat: latitude, lng: longitude },
                             map: map,
@@ -84,6 +85,8 @@
                             },
                         });
                         markers.push(marker);
+
+                        // Add to Heatmap Data
                         heatmapData.push(new google.maps.LatLng(latitude, longitude));
                     });
 
@@ -94,7 +97,6 @@
                         map: map
                     });
 
-                    toggleMarkers(false);
                 })
                 .catch(error => console.error("Error fetching data:", error));
         }
@@ -109,11 +111,6 @@
         function toggleHeatmap() {
             isHeatmapVisible = !isHeatmapVisible;
             heatmap.setMap(isHeatmapVisible ? map : null);
-            toggleMarkers(!isHeatmapVisible);
-        }
-
-        function toggleMarkers(visible) {
-            markers.forEach(marker => marker.setMap(visible ? map : null));
         }
 
         function getUserLocation() {
