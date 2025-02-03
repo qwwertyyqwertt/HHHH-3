@@ -10,18 +10,31 @@
             height: 100vh;
             width: 100%;
         }
+        #toggle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
+    <button id="toggle">Toggle Heatmap</button>
 
     <script>
         let map;
         let heatmap;
         let heatmapData = [];
+        let markers = [];
+        let showHeatmap = true;
         const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9E-8bfuaSNBnZUuAyDo1BoxHqqga7hXks6grEgFGY4P1fWG_9ztTReIBfBHvuf9vxSy1yRZX0i_JC/pub?output=csv";
-        let locations = [];
 
         function initMap() {
             map = new google.maps.Map(document.getElementById("map"), {
@@ -29,6 +42,7 @@
                 center: { lat: 20.5937, lng: 78.9629 }, // Centered on India
             });
 
+            // 🔹 Load Google Sheets Data
             fetch(sheetURL)
                 .then(response => response.text())
                 .then(data => {
@@ -40,47 +54,75 @@
                         const locationName = cols[1].trim();
                         const latitude = parseFloat(cols[3]);
                         const longitude = parseFloat(cols[4]);
-                        const reason = cols[6] ? cols[6].trim() : "No reason provided";
+                        const dangerLevel = cols[5] ? cols[5].trim() : "Unknown";
 
-                        const latLng = new google.maps.LatLng(latitude, longitude);
-                        heatmapData.push(latLng);
-                        locations.push({ latLng, reason });
+                        // ✅ Check if lat & lng are valid
+                        if (!isNaN(latitude) && !isNaN(longitude)) {
+                            const latLng = new google.maps.LatLng(latitude, longitude);
+                            heatmapData.push(latLng);
+
+                            // Add Marker
+                            const marker = new google.maps.Marker({
+                                position: latLng,
+                                map: map,
+                                title: locationName,
+                                icon: {
+                                    url: getMarkerColor(dangerLevel),
+                                    scaledSize: new google.maps.Size(40, 40)
+                                }
+                            });
+                            markers.push(marker);
+                        }
                     });
 
+                    // ✅ Heatmap Layer
                     heatmap = new google.maps.visualization.HeatmapLayer({
                         data: heatmapData,
-                        dissipating: true,
                         radius: 50,
                         map: map
                     });
-
-                    google.maps.event.addListener(map, "click", function(event) {
-                        showReason(event.latLng);
-                    });
                 })
                 .catch(error => console.error("Error fetching data:", error));
+
+            // 🔹 Get User Location
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(position => {
+                    const userLocation = new google.maps.LatLng(position.coords.latitude, position.coords.longitude);
+                    new google.maps.Marker({
+                        position: userLocation,
+                        map: map,
+                        title: "Your Location",
+                        icon: {
+                            path: google.maps.SymbolPath.CIRCLE,
+                            scale: 10,
+                            fillColor: "#4285F4",
+                            fillOpacity: 1,
+                            strokeWeight: 2
+                        }
+                    });
+                    map.setCenter(userLocation);
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+
+            // 🔹 Toggle Heatmap Button
+            document.getElementById("toggle").addEventListener("click", function() {
+                showHeatmap = !showHeatmap;
+                heatmap.setMap(showHeatmap ? map : null);
+            });
         }
 
-        function showReason(clickedLocation) {
-            let minDistance = Infinity;
-            let nearestLocation = null;
-
-            locations.forEach(loc => {
-                const distance = google.maps.geometry.spherical.computeDistanceBetween(clickedLocation, loc.latLng);
-                if (distance < minDistance) {
-                    minDistance = distance;
-                    nearestLocation = loc;
-                }
-            });
-
-            if (nearestLocation) {
-                const infoWindow = new google.maps.InfoWindow({
-                    content: `<strong>Reason:</strong> ${nearestLocation.reason}`,
-                    position: nearestLocation.latLng
-                });
-                infoWindow.open(map);
+        // 🔹 Function to Assign Marker Colors Based on Danger Level
+        function getMarkerColor(dangerLevel) {
+            switch (dangerLevel.toLowerCase()) {
+                case "extreme danger": return "http://maps.google.com/mapfiles/ms/icons/red-dot.png";
+                case "high danger": return "http://maps.google.com/mapfiles/ms/icons/orange-dot.png";
+                case "medium danger": return "http://maps.google.com/mapfiles/ms/icons/yellow-dot.png";
+                default: return "http://maps.google.com/mapfiles/ms/icons/blue-dot.png";
             }
         }
+
     </script>
 
 </body>
