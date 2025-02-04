@@ -124,4 +124,22 @@
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCtfeiHzgaQ8JgSrait4oQjSpBe3UgGIaE&libraries=visualization&callback=initMap" async defer></script>
 
 </body>
+    <button onclick="getLocation()">My Location</button>
+<script>
+function getLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            position => {
+                alert("Latitude: " + position.coords.latitude + "\nLongitude: " + position.coords.longitude);
+            },
+            error => {
+                alert("Error getting location: " + error.message);
+            }
+        );
+    } else {
+        alert("Geolocation is not supported by this browser.");
+    }
+}
+</script>
+
 </html>
